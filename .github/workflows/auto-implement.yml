@@ -31,29 +31,66 @@ jobs:
               ...context.repo, issue_number: issue, labels: ['in-progress']
             });
 
-      - name: Implement with Claude Code
-        uses: anthropics/claude-code-action@v1
-        with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          prompt: |
-            あなたはシニアフルスタックエンジニアです。
-            以下の GitHub Issue を実装してください。
+      - name: Create branch
+        run: |
+          BRANCH="auto/issue-${{ github.event.issue.number }}"
+          git checkout -b "$BRANCH"
+          echo "BRANCH=$BRANCH" >> "$GITHUB_ENV"
 
-            ## ルール
-            - CLAUDE.md のコーディング規約・アーキテクチャに従うこと
-            - 実装前に既存コードを読み、整合性を確認すること
-            - テストを書き、パスすることを確認すること
-            - 1つのIssueに対して1つのPRを作成すること
-            - PRの説明に「Closes #${{ github.event.issue.number }}」を含めること
-            - コミットメッセージは Conventional Commits に従うこと
-            - 不明点があれば最善の判断をし、PRの説明に判断理由を記載すること
+      - name: Implement with Claude Code (Max plan)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        run: |
+          claude --print \
+            --max-turns 50 \
+            --model claude-sonnet-4-20250514 \
+            --allowedTools "Bash,Read,Write,Edit,MultiEdit,Glob,Grep" \
+            "あなたはシニアフルスタックエンジニアです。
+          以下の GitHub Issue を実装してください。
 
-            ## Issue 情報
-            タイトル: ${{ github.event.issue.title }}
-            本文: ${{ github.event.issue.body }}
-            番号: #${{ github.event.issue.number }}
-          max_turns: "50"
-          model: "claude-sonnet-4-20250514"
+          ## ルール
+          - CLAUDE.md のコーディング規約・アーキテクチャに従うこと
+          - 実装前に既存コードを読み、整合性を確認すること
+          - テストを書き、パスすることを確認すること
+          - コミットメッセージは Conventional Commits に従うこと
+          - 不明点があれば最善の判断をし、判断理由をコミットメッセージに記載すること
+
+          ## Issue 情報
+          タイトル: ${ISSUE_TITLE}
+          本文:
+          ${ISSUE_BODY}
+          番号: #${ISSUE_NUMBER}"
+
+      - name: Create PR
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # 変更がある場合のみPR作成
+          if [ -n "$(git status --porcelain)" ]; then
+            git add -A
+            git commit -m "feat: implement #${{ github.event.issue.number }}"
+          fi
+
+          git push origin "$BRANCH"
+
+          gh pr create \
+            --title "feat: ${{ github.event.issue.title }}" \
+            --body "$(cat <<EOF
+          ## 変更内容
+          Issue #${{ github.event.issue.number }} の自動実装
+
+          ## Issue
+          ${{ github.event.issue.title }}
+
+          Closes #${{ github.event.issue.number }}
+          EOF
+          )" \
+            --base main \
+            --head "$BRANCH"
 
       - name: Mark pr-created
         if: success()

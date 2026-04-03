@@ -18,13 +18,17 @@ GitHub Issues をタスクキューとして扱い、Self-hosted Runner 上の C
 
 このリポジトリをテンプレートとして新しいリポジトリを作成する。
 
-### 2. Secrets 設定
+### 2. Claude Code Max プランの認証
 
-リポジトリの Settings → Secrets and variables → Actions に以下を追加:
+ホストマシンで Claude Code を起動し、Max プランでログインする:
 
-| Secret | 内容 |
-|--------|------|
-| `ANTHROPIC_API_KEY` | Anthropic API Key |
+```bash
+claude
+# ブラウザが開くので Max プランのアカウントでログイン
+# ~/.claude/ に認証情報が保存される
+```
+
+Docker コンテナはこの `~/.claude/` を読み取り専用でマウントして認証する。
 
 ### 3. Branch Protection 設定
 
