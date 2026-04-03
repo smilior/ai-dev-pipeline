@@ -37,14 +37,13 @@ jobs:
           git checkout -b "$BRANCH"
           echo "BRANCH=$BRANCH" >> "$GITHUB_ENV"
 
-      - name: Implement with Claude Code (Max plan)
+      - name: Build prompt
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           ISSUE_TITLE: ${{ github.event.issue.title }}
           ISSUE_BODY: ${{ github.event.issue.body }}
         run: |
-          PROMPT=$(cat <<PROMPT_EOF
+          cat > /tmp/prompt.txt <<EOF
           あなたはシニアフルスタックエンジニアです。
           以下の GitHub Issue を実装してください。
 
@@ -60,13 +59,16 @@ jobs:
           本文:
           ${ISSUE_BODY}
           番号: #${ISSUE_NUMBER}
-          PROMPT_EOF
-          )
-          claude --print \
+          EOF
+
+      - name: Implement with Claude Code (Max plan)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cat /tmp/prompt.txt | claude --print \
             --max-turns 50 \
             --model claude-sonnet-4-20250514 \
-            --allowedTools "Bash,Read,Write,Edit,MultiEdit,Glob,Grep" \
-            "$PROMPT"
+            --allowedTools "Bash,Read,Write,Edit,MultiEdit,Glob,Grep"
 
       - name: Create PR
         if: success()
