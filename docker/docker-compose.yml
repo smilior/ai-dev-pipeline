@@ -1,0 +1,21 @@
+services:
+  runner:
+    build: .
+    container_name: claude-runner
+    restart: unless-stopped
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - GITHUB_REPO=${GITHUB_REPO}
+      - RUNNER_TOKEN=${RUNNER_TOKEN}
+      - RUNNER_NAME=${RUNNER_NAME:-claude-runner}
+      - RUNNER_LABELS=${RUNNER_LABELS:-self-hosted}
+    volumes:
+      - runner-work:/home/runner/work
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+
+volumes:
+  runner-work:

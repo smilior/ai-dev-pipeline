@@ -1,0 +1,48 @@
+name: "機能実装"
+description: "自動実装パイプラインで処理される機能リクエスト"
+labels: ["queued"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        このIssueは自動実装パイプラインで処理されます。
+        できるだけ具体的に記述してください。
+
+  - type: textarea
+    id: overview
+    attributes:
+      label: 概要
+      description: この Issue で何を実現するか
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 受け入れ条件
+      description: 完了の基準をチェックリストで記述
+      value: |
+        - [ ] 条件1
+        - [ ] 条件2
+        - [ ] 条件3
+    validations:
+      required: true
+
+  - type: textarea
+    id: technical
+    attributes:
+      label: 技術的な指示（任意）
+      description: 使用ライブラリ、APIの仕様、DB変更など
+
+  - type: input
+    id: depends
+    attributes:
+      label: 依存関係（任意）
+      description: "例: depends-on: #3, #5"
+      placeholder: "depends-on: #"
+
+  - type: textarea
+    id: files
+    attributes:
+      label: 対象ファイル（任意）
+      description: 主に変更が必要なファイルパス

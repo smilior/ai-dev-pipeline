@@ -1,0 +1,82 @@
+name: Issue Queue Orchestrator
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  next-issue:
+    if: github.event.pull_request.merged == true
+    runs-on: self-hosted
+    permissions:
+      issues: write
+
+    steps:
+      - name: Complete current and trigger next issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // --- 1. マージされたPRに紐づくIssueを完了にする ---
+            const body = context.payload.pull_request.body || '';
+            const closeMatches = body.matchAll(/Closes\s+#(\d+)/gi);
+            for (const match of closeMatches) {
+              const issueNumber = parseInt(match[1]);
+              await github.rest.issues.removeLabel({
+                ...context.repo, issue_number: issueNumber, name: 'pr-created'
+              }).catch(() => {});
+              await github.rest.issues.addLabels({
+                ...context.repo, issue_number: issueNumber, labels: ['done']
+              });
+              console.log(`Issue #${issueNumber} を完了にしました`);
+            }
+
+            // --- 2. 1日の実行数チェック（上限10件） ---
+            const today = new Date().toISOString().split('T')[0];
+            const { data: doneToday } = await github.rest.issues.listForRepo({
+              ...context.repo, labels: 'done', state: 'closed',
+              since: `${today}T00:00:00Z`, per_page: 100
+            });
+            if (doneToday.length >= 10) {
+              console.log(`本日の自動実装上限（10件）に達しました。明日再開されます。`);
+              return;
+            }
+
+            // --- 3. 次の queued Issue を探す ---
+            const { data: queued } = await github.rest.issues.listForRepo({
+              ...context.repo, labels: 'queued', state: 'open',
+              sort: 'created', direction: 'asc', per_page: 100
+            });
+
+            for (const issue of queued) {
+              // 依存関係チェック（複数対応: depends-on: #3, #5）
+              const depsMatch = issue.body?.matchAll(/depends-on:\s*([#\d,\s]+)/gi);
+              let blocked = false;
+              for (const dm of (depsMatch || [])) {
+                const depNumbers = dm[1].match(/#(\d+)/g) || [];
+                for (const dep of depNumbers) {
+                  const depNum = parseInt(dep.replace('#', ''));
+                  const { data: depIssue } = await github.rest.issues.get({
+                    ...context.repo, issue_number: depNum
+                  });
+                  if (depIssue.state !== 'closed') {
+                    console.log(`Issue #${issue.number} は #${depNum} に依存しており未完了。スキップ。`);
+                    blocked = true;
+                    break;
+                  }
+                }
+                if (blocked) break;
+              }
+              if (blocked) continue;
+
+              // ラベル変更して実装トリガー
+              await github.rest.issues.removeLabel({
+                ...context.repo, issue_number: issue.number, name: 'queued'
+              }).catch(() => {});
+              await github.rest.issues.addLabels({
+                ...context.repo, issue_number: issue.number, labels: ['auto-implement']
+              });
+              console.log(`次の Issue #${issue.number} を開始しました`);
+              return;
+            }
+
+            console.log('キューに実行可能な Issue がありません。パイプライン完了。');

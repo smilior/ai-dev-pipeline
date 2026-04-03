@@ -1,0 +1,86 @@
+name: Auto Implement Issue
+
+on:
+  issues:
+    types: [labeled]
+
+jobs:
+  implement:
+    if: github.event.label.name == 'auto-implement'
+    runs-on: self-hosted
+    timeout-minutes: 60
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Mark in-progress
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue.number;
+            await github.rest.issues.removeLabel({
+              ...context.repo, issue_number: issue, name: 'auto-implement'
+            }).catch(() => {});
+            await github.rest.issues.addLabels({
+              ...context.repo, issue_number: issue, labels: ['in-progress']
+            });
+
+      - name: Implement with Claude Code
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            あなたはシニアフルスタックエンジニアです。
+            以下の GitHub Issue を実装してください。
+
+            ## ルール
+            - CLAUDE.md のコーディング規約・アーキテクチャに従うこと
+            - 実装前に既存コードを読み、整合性を確認すること
+            - テストを書き、パスすることを確認すること
+            - 1つのIssueに対して1つのPRを作成すること
+            - PRの説明に「Closes #${{ github.event.issue.number }}」を含めること
+            - コミットメッセージは Conventional Commits に従うこと
+            - 不明点があれば最善の判断をし、PRの説明に判断理由を記載すること
+
+            ## Issue 情報
+            タイトル: ${{ github.event.issue.title }}
+            本文: ${{ github.event.issue.body }}
+            番号: #${{ github.event.issue.number }}
+          max_turns: "50"
+          model: "claude-sonnet-4-20250514"
+
+      - name: Mark pr-created
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue.number;
+            await github.rest.issues.removeLabel({
+              ...context.repo, issue_number: issue, name: 'in-progress'
+            }).catch(() => {});
+            await github.rest.issues.addLabels({
+              ...context.repo, issue_number: issue, labels: ['pr-created']
+            });
+
+      - name: Mark failed
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue.number;
+            await github.rest.issues.removeLabel({
+              ...context.repo, issue_number: issue, name: 'in-progress'
+            }).catch(() => {});
+            await github.rest.issues.addLabels({
+              ...context.repo, issue_number: issue, labels: ['failed']
+            });
+            await github.rest.issues.createComment({
+              ...context.repo, issue_number: issue,
+              body: '⚠️ 自動実装に失敗しました。ワークフローのログを確認してください。\n\nRun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+            });

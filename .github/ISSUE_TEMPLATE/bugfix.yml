@@ -1,0 +1,49 @@
+name: "バグ修正"
+description: "自動実装パイプラインで処理されるバグ修正"
+labels: ["queued", "bug"]
+body:
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: バグの概要
+      description: 何が起きているか
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 再現手順
+      description: バグを再現する手順
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期待する動作
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: 実際の動作
+    validations:
+      required: true
+
+  - type: textarea
+    id: fix-hint
+    attributes:
+      label: 修正のヒント（任意）
+      description: 原因の推測や修正方針
+
+  - type: input
+    id: depends
+    attributes:
+      label: 依存関係（任意）
+      placeholder: "depends-on: #"
