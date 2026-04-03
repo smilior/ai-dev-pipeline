@@ -12,7 +12,7 @@ services:
     volumes:
       - runner-work:/home/runner/work
       - ${HOME}/.claude:/home/runner/.claude:ro  # Max プラン認証情報
-      - ${HOME}/.claude.json:/home/runner/.claude.json:ro  # Claude 設定ファイル
+      - ${HOME}/.claude-docker.json:/home/runner/.claude.json:ro  # Claude 設定ファイル（軽量版）
     deploy:
       resources:
         limits:
