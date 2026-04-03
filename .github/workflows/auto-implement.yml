@@ -44,11 +44,8 @@ jobs:
           ISSUE_TITLE: ${{ github.event.issue.title }}
           ISSUE_BODY: ${{ github.event.issue.body }}
         run: |
-          claude --print \
-            --max-turns 50 \
-            --model claude-sonnet-4-20250514 \
-            --allowedTools "Bash,Read,Write,Edit,MultiEdit,Glob,Grep" \
-            "あなたはシニアフルスタックエンジニアです。
+          PROMPT=$(cat <<PROMPT_EOF
+          あなたはシニアフルスタックエンジニアです。
           以下の GitHub Issue を実装してください。
 
           ## ルール
@@ -62,7 +59,14 @@ jobs:
           タイトル: ${ISSUE_TITLE}
           本文:
           ${ISSUE_BODY}
-          番号: #${ISSUE_NUMBER}"
+          番号: #${ISSUE_NUMBER}
+          PROMPT_EOF
+          )
+          claude --print \
+            --max-turns 50 \
+            --model claude-sonnet-4-20250514 \
+            --allowedTools "Bash,Read,Write,Edit,MultiEdit,Glob,Grep" \
+            "$PROMPT"
 
       - name: Create PR
         if: success()
