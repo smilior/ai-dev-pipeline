@@ -20,6 +20,13 @@
 
 <!-- TODO: 各ディレクトリの役割を記載 -->
 
+## ブランチ運用
+
+- `main` — テンプレート本体。常に綺麗な状態を保つ
+- `test/pipeline-validation` — パイプライン動作検証用。自由に汚してOK
+- 検証中にテンプレート側の問題を発見した場合のみ、cherry-pick か PR で `main` に反映する
+- 検証用の変更（テストデータ、一時的な設定など）は `main` にマージしない
+
 ## コミットルール
 
 - Conventional Commits 形式: `feat:`, `fix:`, `refactor:`, `test:`, `docs:`, `chore:`
